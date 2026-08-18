@@ -53,11 +53,19 @@ def call(Map config = [:]) {
     // instance's own role is sandbox-account only) - fetched fresh each
     // run rather than stored as a Jenkins credential, so rotating the IAM
     // user's keys in Terraform needs no matching Jenkins-side change.
+    //
+    // `set +x` is required here: Jenkins' sh step traces every command to
+    // the build log by default (the "+ ..." lines), which would otherwise
+    // print the secret and both derived keys in plaintext to anyone who can
+    // read the build console.
     sh """
+        set +x
         SECRET=\$(aws secretsmanager get-secret-value --region ${region} --secret-id quickmart/frontend-invalidation --query SecretString --output text)
         export AWS_ACCESS_KEY_ID=\$(echo "\$SECRET" | python3 -c "import json,sys; print(json.load(sys.stdin)['access_key_id'])")
         export AWS_SECRET_ACCESS_KEY=\$(echo "\$SECRET" | python3 -c "import json,sys; print(json.load(sys.stdin)['secret_access_key'])")
         DISTRIBUTION_ID=\$(echo "\$SECRET" | python3 -c "import json,sys; print(json.load(sys.stdin)['distribution_id'])")
+        unset SECRET
+        set -x
         aws cloudfront create-invalidation --distribution-id "\$DISTRIBUTION_ID" --paths '/*'
     """
 
