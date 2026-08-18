@@ -20,15 +20,12 @@ data:
     # leak into and break the rest of that script. Confining them to a
     # subshell keeps the blast radius to just this file.
     (
-      set -euo pipefail
-
-      mysql -uroot -p"${MYSQL_ROOT_PASSWORD}" <<-EOSQL
-          CREATE USER IF NOT EXISTS '${MYSQL_ADMIN_USER}'@'%' IDENTIFIED BY '${MYSQL_ADMIN_PASSWORD}';
-          GRANT ALL PRIVILEGES ON *.* TO '${MYSQL_ADMIN_USER}'@'%' WITH GRANT OPTION;
-
-          CREATE USER IF NOT EXISTS '${MYSQL_LOCAL_USER}'@'%' IDENTIFIED BY '${MYSQL_LOCAL_PASSWORD}';
-          GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_LOCAL_USER}'@'%';
-
-          FLUSH PRIVILEGES;
-      EOSQL
+    set -euo pipefail
+    mysql -uroot -p"${MYSQL_ROOT_PASSWORD}" <<EOSQL
+    CREATE USER IF NOT EXISTS '${MYSQL_ADMIN_USER}'@'%' IDENTIFIED BY '${MYSQL_ADMIN_PASSWORD}';
+    GRANT ALL PRIVILEGES ON *.* TO '${MYSQL_ADMIN_USER}'@'%' WITH GRANT OPTION;
+    CREATE USER IF NOT EXISTS '${MYSQL_LOCAL_USER}'@'%' IDENTIFIED BY '${MYSQL_LOCAL_PASSWORD}';
+    GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_LOCAL_USER}'@'%';
+    FLUSH PRIVILEGES;
+    EOSQL
     )
