@@ -4,14 +4,22 @@ metadata:
   name: {{ .Values.project }}-backend
   namespace: {{ .Release.Namespace }}
 spec:
+  # replicas intentionally omitted: the HPA (templates/hpa.yaml) owns this
+  # field once it exists - Helm/ArgoCD setting it on every sync would fight
+  # the HPA's own scaling decisions. .Values.replicas is still the HPA's
+  # minReplicas, so this stays in effect until the HPA's first reconcile.
   replicas: {{ .Values.replicas }}
-  # Recreate, not the default RollingUpdate: the pod binds hostPort
-  # {{ .Values.containerPort }} on this single-node cluster, so a new pod
-  # can never be scheduled alongside the still-running old one (the
-  # scheduler rejects it outright - "didn't have free ports") - every
-  # rolling update would hang in Pending forever without this.
+  # RollingUpdate, maxUnavailable 0 / maxSurge 1: the new pod must pass its
+  # readiness probe (i.e. be fully live) before the old one is removed -
+  # true zero-downtime. Only possible now that the pod no longer binds
+  # hostPort (see service.yaml) - two pods on one node can't otherwise both
+  # bind the same host port at once, which is what forced Recreate (and its
+  # brief downtime window) before this revamp.
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: {{ .Values.project }}-backend
@@ -38,29 +46,46 @@ spec:
         - name: backend
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           ports:
-            # hostPort exposes this directly on the node's own network
-            # interface - stage 1 of public access (plain HTTP, no domain/TLS
-            # yet), reachable at http://<elastic-ip>:{{ .Values.containerPort }}.
-            # Fine for a single-node cluster; would need an Ingress instead on
-            # a real multi-node setup.
             - containerPort: {{ .Values.containerPort }}
-              hostPort: {{ .Values.containerPort }}
           envFrom:
             - configMapRef:
                 name: {{ .Values.project }}-backend-config
             - secretRef:
                 name: {{ .Values.project }}-backend-secrets
+          # Three distinct probes (kubernetes.io/docs/reference under the
+          # Probe v1 core API type), each answering a different question:
+          #   startup   - has the JVM finished booting yet at all? Gates the
+          #               other two probes off until this succeeds, so a
+          #               slow cold start (Flyway migrations, JIT warmup)
+          #               can't be mistaken for a liveness failure and
+          #               killed mid-boot.
+          #   readiness - can this pod take traffic RIGHT NOW? Controls
+          #               Service endpoint membership and, combined with
+          #               maxUnavailable=0 above, gates the rollout itself -
+          #               the old pod isn't removed until this succeeds on
+          #               the new one.
+          #   liveness  - has this pod wedged into an unrecoverable state
+          #               and needs a restart? Deliberately more tolerant
+          #               (longer period, higher failureThreshold) than
+          #               readiness - a pod that's briefly unready (e.g.
+          #               mid-GC pause) shouldn't be killed for it.
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: {{ .Values.containerPort }}
+            periodSeconds: 5
+            failureThreshold: 30 # 5s * 30 = 150s allowed to boot
           readinessProbe:
             httpGet:
               path: /actuator/health
               port: {{ .Values.containerPort }}
-            initialDelaySeconds: 30
-            periodSeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
           livenessProbe:
             httpGet:
               path: /actuator/health
               port: {{ .Values.containerPort }}
-            initialDelaySeconds: 45
-            periodSeconds: 20
+            periodSeconds: 10
+            failureThreshold: 6
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

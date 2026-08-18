@@ -18,3 +18,13 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+  # Without this, selfHeal treats the HPA's own replica-count changes as
+  # drift from the Helm-rendered replicas: 1 and reverts them on every
+  # sync - fighting the HPA (templates/hpa.yaml) into permanent
+  # ineffectiveness rather than letting it actually scale anything.
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: quickmart-backend
+      jsonPointers:
+        - /spec/replicas

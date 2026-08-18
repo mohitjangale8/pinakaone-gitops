@@ -15,9 +15,22 @@ ecr:
   region: ap-south-1
   refreshSchedule: "0 */6 * * *"
 
+# HPA (templates/hpa.yaml) owns replica count once deployed - this is only
+# the starting point / HPA's minReplicas.
 replicas: 1
 
 containerPort: 8204
+
+service:
+  # Fixed NodePort, same pattern as the mysql/argocd charts - Caddy's
+  # reverse_proxy target (pinakaone-iac's Caddyfile) points here, not at
+  # containerPort directly.
+  nodePort: 30204
+
+hpa:
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
 
 mysql:
   # Must match the mysql chart's release naming (<project>-mysql), and both
