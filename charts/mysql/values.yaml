@@ -1,5 +1,10 @@
 project: quickmart
 
+service:
+  # Fixed NodePort for direct Workbench access - must stay in sync with the
+  # security group rule (modules/ec2-spot) allowing this port from trusted IPs.
+  nodePort: 30306
+
 image:
   repository: mysql
   tag: "8.0"

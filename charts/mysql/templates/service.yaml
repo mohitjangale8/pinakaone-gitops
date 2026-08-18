@@ -1,14 +1,17 @@
-# ClusterIP only - MySQL is never publicly exposed. External access (e.g.
-# Workbench) goes through kubectl port-forward + SSM, never a public port.
+# NodePort (fixed) instead of kubectl port-forward: kube-proxy's iptables
+# rules survive pod/node restarts on their own, where a hand-rolled
+# port-forward loop needs babysitting and can silently die. The security
+# group still restricts which source IPs can actually reach this port.
 apiVersion: v1
 kind: Service
 metadata:
   name: {{ .Values.project }}-mysql
   namespace: {{ .Release.Namespace }}
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     app: {{ .Values.project }}-mysql
   ports:
     - port: 3306
       targetPort: 3306
+      nodePort: {{ .Values.service.nodePort }}
