@@ -13,6 +13,18 @@ spec:
       labels:
         app: {{ .Values.project }}-backend
     spec:
+      initContainers:
+        - name: wait-for-mysql
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z -w2 {{ .Values.mysql.host }} {{ .Values.mysql.port }}; do
+                echo "waiting for {{ .Values.mysql.host }}:{{ .Values.mysql.port }}..."
+                sleep 2
+              done
+              echo "mysql is reachable"
       containers:
         - name: backend
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
