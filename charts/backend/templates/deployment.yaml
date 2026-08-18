@@ -5,6 +5,13 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: {{ .Values.replicas }}
+  # Recreate, not the default RollingUpdate: the pod binds hostPort
+  # {{ .Values.containerPort }} on this single-node cluster, so a new pod
+  # can never be scheduled alongside the still-running old one (the
+  # scheduler rejects it outright - "didn't have free ports") - every
+  # rolling update would hang in Pending forever without this.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: {{ .Values.project }}-backend
