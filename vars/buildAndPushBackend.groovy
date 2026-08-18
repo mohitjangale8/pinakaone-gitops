@@ -10,11 +10,13 @@ def call(Map config = [:]) {
     def image         = 'quickmart-backend'
     def region        = 'ap-south-1'
 
-    def imageTag
+    // Jenkins' own build number, not branch+sha - gives a clean, consistent
+    // v1, v2, v3... sequence with zero extra state to track. The git sha is
+    // still recoverable from the commit this build number's Jenkins run
+    // checked out, if ever needed.
+    def imageTag = "v${env.BUILD_NUMBER}"
     dir('backend-src') {
         git branch: branch, url: repoUrl, credentialsId: credentialsId
-        def sha = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-        imageTag = "${branch}-${sha}"
 
         sh """
             aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${registry}
