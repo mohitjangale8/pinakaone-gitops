@@ -7,6 +7,12 @@
 # any host - for Workbench over the SSM tunnel) and quickmart_local (scoped
 # to just the app database - for running the backend locally against the
 # real cloud DB).
+#
+# IMPORTANT: this MySQL image version creates root@'%' by default (in
+# addition to root@localhost) even without MYSQL_ROOT_HOST set - contrary
+# to older documented behavior. root@'%' is explicitly dropped below so
+# root is only ever reachable via kubectl exec, never over the network,
+# matching the intended design (see pinakaone-iac/modules/secrets).
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -26,6 +32,7 @@ data:
     GRANT ALL PRIVILEGES ON *.* TO '${MYSQL_ADMIN_USER}'@'%' WITH GRANT OPTION;
     CREATE USER IF NOT EXISTS '${MYSQL_LOCAL_USER}'@'%' IDENTIFIED BY '${MYSQL_LOCAL_PASSWORD}';
     GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_LOCAL_USER}'@'%';
+    DROP USER IF EXISTS 'root'@'%';
     FLUSH PRIVILEGES;
     EOSQL
     )
