@@ -7,9 +7,8 @@ pipeline {
         string(name: 'BRANCH', defaultValue: 'main', description: 'quickmart-frontend branch to build')
     }
 
-    // Manual trigger only for now - no polling/webhook until there's a
-    // public endpoint (or SCM polling) wired up.
-    triggers {}
+    // No triggers block at all = manual "Build with Parameters" only. No
+    // polling/webhook until there's a public endpoint wired up.
 
     stages {
         stage('Build and deploy frontend') {
