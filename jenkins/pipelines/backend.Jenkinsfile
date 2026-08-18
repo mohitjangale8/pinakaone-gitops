@@ -3,11 +3,7 @@
 pipeline {
     agent any
 
-    parameters {
-        string(name: 'BRANCH', defaultValue: 'main', description: 'quickmart-backend branch to build')
-    }
-
-    // No triggers block at all = manual "Build with Parameters" only. No
+    // No parameters, no triggers - plain "Build Now" against main. No
     // polling/webhook until there's a public endpoint wired up.
 
     stages {
@@ -19,7 +15,7 @@ pipeline {
 
         stage('Build and push backend') {
             steps {
-                buildAndPushBackend(branch: params.BRANCH, credentialsId: 'github-credentials')
+                buildAndPushBackend(branch: 'main', credentialsId: 'github-credentials')
             }
         }
     }
