@@ -20,8 +20,29 @@ def call(Map config = [:]) {
         currentBuild.displayName = "#${env.BUILD_NUMBER} quickmart-frontend -> ${branch}"
         currentBuild.description = "quickmart-frontend @ ${shortSha} ${author}\n${message}"
 
+        // node_modules cache outside the workspace, keyed by a hash of
+        // package.json + package-lock.json - same pattern used by BARC-UI's
+        // pipeline (tran-ec2-deployment-config). Skips npm entirely when
+        // dependencies haven't changed since the last build, which is most
+        // builds. Copied in/out rather than symlinked: npm's own atomic
+        // renames (@npmcli/*) don't reliably handle node_modules itself
+        // being a symlink and fail partway through install with ENOTEMPTY.
+        def cacheDir = "${env.HOME}/.quickmart-frontend-nm-cache"
         sh """
-            npm ci
+            mkdir -p '${cacheDir}'
+            HASH=\$(cat package.json package-lock.json 2>/dev/null | md5sum | cut -d ' ' -f1)
+            PREV=\$(cat '${cacheDir}/.dephash' 2>/dev/null || echo none)
+            if [ "\$PREV" = "\$HASH" ] && [ -d '${cacheDir}/node_modules' ]; then
+                echo "[deps] cache HIT (\$HASH) - restoring node_modules, skipping npm ci"
+                rm -rf node_modules
+                cp -a '${cacheDir}/node_modules' node_modules
+            else
+                echo "[deps] cache MISS - running npm ci"
+                npm ci
+                rm -rf '${cacheDir}/node_modules'
+                cp -a node_modules '${cacheDir}/node_modules'
+                echo "\$HASH" > '${cacheDir}/.dephash'
+            fi
             npm run build
             aws s3 sync dist/quickmart-frontend/browser s3://${bucket} --delete --region ${region}
         """
