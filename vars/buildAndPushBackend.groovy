@@ -37,7 +37,7 @@ def call(Map config = [:]) {
             git config user.name 'Jenkins'
             git add charts/backend/values.yaml
             git commit -m "backend: deploy ${imageTag}" || echo 'nothing to commit'
-            git push https://\$GIT_USER:\$GIT_TOKEN@github.com/mohitjangale8/pinakaone-gitops.git HEAD:dev
+            git push https://\$GIT_USER:\$GIT_TOKEN@github.com/mohitjangale8/pinakaone-gitops.git HEAD:main
         """
     }
 

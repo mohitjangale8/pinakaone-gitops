@@ -11,7 +11,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/mohitjangale8/pinakaone-gitops.git
-    targetRevision: dev
+    targetRevision: main
     path: apps
     directory:
       recurse: true

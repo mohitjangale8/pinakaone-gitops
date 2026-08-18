@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/mohitjangale8/pinakaone-gitops.git
-    targetRevision: dev
+    targetRevision: main
     path: charts/mysql
   destination:
     server: https://kubernetes.default.svc
