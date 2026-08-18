@@ -2,7 +2,7 @@ project: quickmart
 
 image:
   repository: 931238251190.dkr.ecr.ap-south-1.amazonaws.com/quickmart-backend
-  tag: v1
+  tag: main-d922c04
 
 # ECR auth tokens expire every 12h - imagePullSecretName is refreshed
 # automatically by the CronJob in templates/cronjob-ecr-refresh.yaml, using
