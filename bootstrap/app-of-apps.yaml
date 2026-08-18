@@ -1,0 +1,24 @@
+# The one Application you apply by hand. It watches apps/ recursively -
+# any Application manifest placed under apps/<project>/ gets picked up
+# and synced automatically. Adding a new project = adding files here,
+# not touching this one again.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: app-of-apps
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/mohitjangale8/pinakaone-gitops.git
+    targetRevision: dev
+    path: apps
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
