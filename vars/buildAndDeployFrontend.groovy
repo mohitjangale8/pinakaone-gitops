@@ -14,6 +14,12 @@ def call(Map config = [:]) {
     dir('frontend-src') {
         git branch: branch, url: repoUrl, credentialsId: credentialsId
 
+        def shortSha = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+        def author   = sh(script: 'git log -1 --pretty=%an', returnStdout: true).trim()
+        def message  = sh(script: 'git log -1 --pretty=%s', returnStdout: true).trim()
+        currentBuild.displayName = "#${env.BUILD_NUMBER} quickmart-frontend -> S3"
+        currentBuild.description = "quickmart-frontend @ ${shortSha} ${author}\n${message}"
+
         sh """
             npm ci
             npm run build

@@ -18,6 +18,12 @@ def call(Map config = [:]) {
     dir('backend-src') {
         git branch: branch, url: repoUrl, credentialsId: credentialsId
 
+        def shortSha  = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+        def author    = sh(script: 'git log -1 --pretty=%an', returnStdout: true).trim()
+        def message   = sh(script: 'git log -1 --pretty=%s', returnStdout: true).trim()
+        currentBuild.displayName = "#${env.BUILD_NUMBER} quickmart-backend -> ECR/ArgoCD"
+        currentBuild.description = "quickmart-backend @ ${shortSha} ${author}\n${message}"
+
         sh """
             aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${registry}
             docker build -t ${registry}/${image}:${imageTag} .
