@@ -1,9 +1,10 @@
 // Shared library step: checkout quickmart-frontend at the given branch,
-// build it, and sync the static output straight to the frontend's S3
-// bucket. No image, no chart, no ArgoCD involvement - this is the whole
-// deploy. CloudFront cache invalidation is skipped for now (distribution
-// isn't live yet, pending AWS account verification) - once it exists, add
-// an `aws cloudfront create-invalidation` call here.
+// build it, sync the static output to the frontend's S3 bucket, then
+// invalidate CloudFront so the new build is actually visible (S3 sync alone
+// doesn't clear CloudFront's edge caches). The distribution lives in a
+// different AWS account than this instance's own role, so invalidation
+// uses a separate, narrowly-scoped IAM user's keys pulled from Secrets
+// Manager (same cross-account pattern as Caddy's DNS-01 credentials).
 def call(Map config = [:]) {
     def branch        = config.branch ?: 'main'
     def credentialsId = config.credentialsId ?: 'github-credentials'
@@ -48,5 +49,17 @@ def call(Map config = [:]) {
         """
     }
 
-    echo "Synced to s3://${bucket}. No CloudFront distribution yet, so this isn't publicly reachable until that's unblocked - see AWS Support case for account verification."
+    // Cross-account credentials (CloudFront is in the paid account, this
+    // instance's own role is sandbox-account only) - fetched fresh each
+    // run rather than stored as a Jenkins credential, so rotating the IAM
+    // user's keys in Terraform needs no matching Jenkins-side change.
+    sh """
+        SECRET=\$(aws secretsmanager get-secret-value --region ${region} --secret-id quickmart/frontend-invalidation --query SecretString --output text)
+        export AWS_ACCESS_KEY_ID=\$(echo "\$SECRET" | python3 -c "import json,sys; print(json.load(sys.stdin)['access_key_id'])")
+        export AWS_SECRET_ACCESS_KEY=\$(echo "\$SECRET" | python3 -c "import json,sys; print(json.load(sys.stdin)['secret_access_key'])")
+        DISTRIBUTION_ID=\$(echo "\$SECRET" | python3 -c "import json,sys; print(json.load(sys.stdin)['distribution_id'])")
+        aws cloudfront create-invalidation --distribution-id "\$DISTRIBUTION_ID" --paths '/*'
+    """
+
+    echo "Synced to s3://${bucket} and invalidated CloudFront - live at https://quickmart.pinakaone.in"
 }
