@@ -16,8 +16,7 @@ pipeline {
             selectedValue: 'DEFAULT',
             sortMode: 'ASCENDING_SMART',
             quickFilterEnabled: true,
-            useRepository: 'https://github.com/mohitjangale8/quickmart-backend.git',
-            credentialsId: 'github-credentials'
+            useRepository: 'https://github.com/mohitjangale8/quickmart-backend.git'
         )
     }
 
