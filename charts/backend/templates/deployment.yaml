@@ -31,7 +31,13 @@ spec:
         - name: backend
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           ports:
+            # hostPort exposes this directly on the node's own network
+            # interface - stage 1 of public access (plain HTTP, no domain/TLS
+            # yet), reachable at http://<elastic-ip>:{{ .Values.containerPort }}.
+            # Fine for a single-node cluster; would need an Ingress instead on
+            # a real multi-node setup.
             - containerPort: {{ .Values.containerPort }}
+              hostPort: {{ .Values.containerPort }}
           envFrom:
             - configMapRef:
                 name: {{ .Values.project }}-backend-config
