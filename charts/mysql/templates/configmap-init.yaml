@@ -1,0 +1,28 @@
+# The official mysql image only auto-creates root (via MYSQL_ROOT_PASSWORD)
+# and one app user (via MYSQL_USER/MYSQL_PASSWORD, scoped to MYSQL_DATABASE)
+# from plain env vars. This script runs on first boot (mounted into
+# /docker-entrypoint-initdb.d/, sourced - not executed - by the image's own
+# entrypoint, so it inherits the container's env vars directly) to create
+# the other two accounts in our 4-tier model: pinakaone_admin (full access,
+# any host - for Workbench over the SSM tunnel) and quickmart_local (scoped
+# to just the app database - for running the backend locally against the
+# real cloud DB).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.project }}-mysql-init
+  namespace: {{ .Release.Namespace }}
+data:
+  init-extra-users.sh: |
+    #!/bin/bash
+    set -euo pipefail
+
+    mysql -uroot -p"${MYSQL_ROOT_PASSWORD}" <<-EOSQL
+        CREATE USER IF NOT EXISTS '${MYSQL_ADMIN_USER}'@'%' IDENTIFIED BY '${MYSQL_ADMIN_PASSWORD}';
+        GRANT ALL PRIVILEGES ON *.* TO '${MYSQL_ADMIN_USER}'@'%' WITH GRANT OPTION;
+
+        CREATE USER IF NOT EXISTS '${MYSQL_LOCAL_USER}'@'%' IDENTIFIED BY '${MYSQL_LOCAL_PASSWORD}';
+        GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_LOCAL_USER}'@'%';
+
+        FLUSH PRIVILEGES;
+    EOSQL

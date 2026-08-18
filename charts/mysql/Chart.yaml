@@ -1,0 +1,4 @@
+apiVersion: v2
+name: mysql
+description: Generic MySQL 8 StatefulSet with a 4-tier user model (app, root, admin, local-dev), credentials sourced from AWS Secrets Manager via ExternalSecret.
+version: 0.1.0

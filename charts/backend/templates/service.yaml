@@ -1,0 +1,15 @@
+# ClusterIP only for now - not publicly reachable until CloudFront/ALB is
+# wired up in a later phase. Reachable for manual testing via kubectl
+# port-forward + SSM, same pattern as everything else.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.project }}-backend
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ .Values.project }}-backend
+  ports:
+    - port: {{ .Values.containerPort }}
+      targetPort: {{ .Values.containerPort }}

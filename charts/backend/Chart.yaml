@@ -1,0 +1,4 @@
+apiVersion: v2
+name: backend
+description: Generic Spring Boot backend Deployment - image from ECR, non-secret config from a ConfigMap, credentials from AWS Secrets Manager via ExternalSecret.
+version: 0.1.0

@@ -1,0 +1,14 @@
+# ClusterIP only - MySQL is never publicly exposed. External access (e.g.
+# Workbench) goes through kubectl port-forward + SSM, never a public port.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.project }}-mysql
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ .Values.project }}-mysql
+  ports:
+    - port: 3306
+      targetPort: 3306

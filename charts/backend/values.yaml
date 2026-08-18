@@ -1,0 +1,34 @@
+project: quickmart
+
+image:
+  repository: 931238251190.dkr.ecr.ap-south-1.amazonaws.com/quickmart-backend
+  tag: v1
+
+replicas: 1
+
+containerPort: 8204
+
+mysql:
+  # Must match the mysql chart's release naming (<project>-mysql), and both
+  # charts must be deployed into the same namespace for this DNS name to resolve.
+  host: quickmart-mysql
+  port: 3306
+  # Must match modules/secrets' db_name in pinakaone-iac (default: pinakaone_quickmart)
+  database: pinakaone_quickmart
+
+config:
+  corsAllowedOrigins: "http://localhost:4200,http://localhost:3000,https://quickmart.pinakaone.in"
+  jwtExpirationMs: "86400000"
+  paymentMock: "false"
+  s3Bucket: quickmart-image-bucket
+  s3Region: ap-south-1
+  s3PublicBase: https://quickmart-image-bucket.s3.ap-south-1.amazonaws.com
+  trackingEnabled: "true"
+  trackingCron: "0 */1 * * * *"
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    memory: 1Gi

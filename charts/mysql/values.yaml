@@ -1,0 +1,20 @@
+project: quickmart
+
+image:
+  repository: mysql
+  tag: "8.0"
+
+storage:
+  size: 8Gi
+  # K3s's built-in "local-path" storage class. Ties data to this specific
+  # node's local disk - fine for now, but means data does NOT survive the
+  # instance itself being replaced (spot reclaim). Revisit once the ASG
+  # lifecycle-hook + persistent EBS design (BRD section 10.5) is built.
+  storageClassName: local-path
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    memory: 1Gi
