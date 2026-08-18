@@ -28,7 +28,11 @@ spec:
                   mountPath: /token
           containers:
             - name: apply-secret
-              image: bitnami/kubectl:1.30
+              # Not bitnami/kubectl:1.30 - Bitnami has been deprecating free
+              # image tags aggressively and that one no longer resolves
+              # ("not found", not a permissions issue). rancher/kubectl is a
+              # small, actively-maintained alternative.
+              image: rancher/kubectl:v1.30.0
               command:
                 - sh
                 - -c
