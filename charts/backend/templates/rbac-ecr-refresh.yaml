@@ -1,0 +1,31 @@
+# Lets the ecr-refresh CronJob's pod create/update the ECR pull secret in
+# this namespace only - nothing broader.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.project }}-ecr-refresh
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Values.project }}-ecr-refresh
+  namespace: {{ .Release.Namespace }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Values.project }}-ecr-refresh
+  namespace: {{ .Release.Namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.project }}-ecr-refresh
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: {{ .Values.project }}-ecr-refresh
+  apiGroup: rbac.authorization.k8s.io
