@@ -27,6 +27,14 @@ spec:
     metadata:
       labels:
         app: {{ .Values.project }}-backend
+      annotations:
+        # Nothing else ties the ConfigMap's actual content into the pod
+        # template - envFrom only references it by name, so Kubernetes has
+        # no signal to roll pods when it changes. This hash changes
+        # whenever the ConfigMap's rendered content does, which changes
+        # the pod template, which is what actually triggers the rolling
+        # restart (maxUnavailable=0 above still applies, so zero-downtime).
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
       initContainers:
         - name: wait-for-mysql
