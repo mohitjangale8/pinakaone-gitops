@@ -1,37 +1,41 @@
 // Shared library step: takes the submitted CONFIG_DATA (the Active
-// Choices box on the job's Build page, pre-filled with the selected
-// application's current values.yaml) and writes it back after checking
-// the diff and validating it's still parseable YAML, then pushes -
-// ArgoCD (polling every 30s) picks it up and rolls the deployment.
+// Choices box on the job's Build page, pre-filled with just the selected
+// application's config.* block - not the whole values.yaml, since that
+// also has image.tag/replicas/service etc. owned by other pipelines/HPA)
+// and merges it back into the full file, then pushes - ArgoCD (polling
+// every 30s) picks it up and rolls the deployment.
 def call(Map config = [:]) {
-    def app         = config.application
-    def valuesFile  = "charts/${app}/values.yaml"
-    def newContent  = config.content
-    def current     = readFile(valuesFile)
+    def app            = config.application
+    def valuesFile     = "charts/${app}/values.yaml"
+    def newConfigBlock = config.content
+    def current        = readFile(valuesFile)
 
-    if (newContent == current) {
+    writeFile file: 'config-fragment.yaml', text: newConfigBlock
+    // Fail fast if the edited fragment itself isn't valid YAML, before it
+    // ever reaches git/ArgoCD.
+    sh 'yq eval . config-fragment.yaml > /dev/null'
+
+    sh "yq eval '.config = load(\"config-fragment.yaml\")' ${valuesFile} > values.yaml.new"
+
+    if (readFile('values.yaml.new') == current) {
         echo 'No changes - nothing to do.'
+        sh 'rm -f config-fragment.yaml values.yaml.new'
         return
     }
-
-    writeFile file: 'values.yaml.new', text: newContent
-
-    // "Compile time" check - fail fast on invalid YAML before it ever
-    // reaches git/ArgoCD, instead of ArgoCD failing to apply it later.
-    sh 'yq eval . values.yaml.new > /dev/null'
 
     echo "--- diff: ${valuesFile} ---"
     sh "diff -u ${valuesFile} values.yaml.new || true"
 
     sh "mv values.yaml.new ${valuesFile}"
-    currentBuild.displayName = "#${env.BUILD_NUMBER} ${app}/values.yaml edited"
+    sh 'rm -f config-fragment.yaml'
+    currentBuild.displayName = "#${env.BUILD_NUMBER} ${app} config updated"
 
     withCredentials([usernamePassword(credentialsId: 'github-credentials', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
         sh """
             git config user.email 'jenkins@pinakaone.local'
             git config user.name 'Jenkins'
             git add ${valuesFile}
-            git commit -m "${app}: values.yaml edited via Jenkins" || echo 'nothing to commit'
+            git commit -m "${app}: config updated via Jenkins" || echo 'nothing to commit'
             git push https://\$GIT_USER:\$GIT_TOKEN@github.com/mohitjangale8/pinakaone-gitops.git HEAD:main
         """
     }
