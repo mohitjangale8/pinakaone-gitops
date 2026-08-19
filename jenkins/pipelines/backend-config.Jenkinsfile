@@ -1,17 +1,18 @@
 @Library('pinakaone-shared-lib') _
 
-// CONFIG_DATA and DRY_RUN are defined on the job itself (Active Choices -
-// CONFIG_DATA is pre-filled with the current charts/backend/values.yaml
-// content right on the Build page, before you click Build). Deliberately
-// a scripted pipeline, not `pipeline { parameters {} }`: declarative
-// reconciles the job's parameter list against whatever's declared here on
-// every run, which would wipe out the config.xml-defined Active Choices
-// parameter.
+// Parameters are defined on the job itself (Manage via UI, not here):
+//   APPLICATION - plain Choice Parameter, the chart under charts/ to edit
+//   CONFIG_DATA - Active Choices Reactive Reference Parameter, pre-filled
+//                 with the selected application's current values.yaml
+// Deliberately a scripted pipeline, not `pipeline { parameters {} }`:
+// declarative reconciles the job's parameter list against whatever's
+// declared here on every run, which would delete the UI/config.xml-
+// defined Active Choices parameter.
 node {
     stage('Checkout gitops repo') {
         checkout scm
     }
-    stage('Diff / Apply') {
-        editBackendValuesYamlFromParam(dryRun: params.DRY_RUN, content: params.CONFIG_DATA)
+    stage('Diff, validate, commit') {
+        editApplicationValuesYaml(application: params.APPLICATION, content: params.CONFIG_DATA)
     }
 }
