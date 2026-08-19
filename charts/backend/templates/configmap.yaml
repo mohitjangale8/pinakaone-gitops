@@ -8,5 +8,5 @@ metadata:
 data:
   SPRING_DATASOURCE_URL: "jdbc:mysql://{{ .Values.mysql.host }}:{{ .Values.mysql.port }}/{{ .Values.mysql.database }}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
   {{- range $key, $value := .Values.config }}
-  APP_{{ $key | snakecase | upper }}: {{ $value | quote }}
+  {{ $key }}: {{ $value | quote }}
   {{- end }}
