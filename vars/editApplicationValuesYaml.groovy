@@ -5,10 +5,18 @@
 // and merges it back into the full file, then pushes - ArgoCD (polling
 // every 30s) picks it up and rolls the deployment.
 def call(Map config = [:]) {
-    def app            = config.application
-    def valuesFile     = "charts/${app}/values.yaml"
-    def newConfigBlock = config.content
-    def current        = readFile(valuesFile)
+    def app        = config.application
+    def valuesFile = "charts/${app}/values.yaml"
+    def current    = readFile(valuesFile)
+
+    // Active Choices' JS JSON-escapes the textarea's content before
+    // submitting it (real newlines arrive as the literal two characters
+    // \ and n, quotes as \") and tacks on a stray trailing comma - it
+    // never reaches us as plain text. Confirmed live 2026-08-19 by
+    // inspecting the actual build.xml parameter value. Reverse both
+    // before treating this as YAML.
+    def raw = config.content.replaceAll(/,\s*$/, '')
+    def newConfigBlock = new groovy.json.JsonSlurper().parseText('"' + raw + '"')
 
     writeFile file: 'config-fragment.yaml', text: newConfigBlock
     // Fail fast if the edited fragment itself isn't valid YAML, before it
