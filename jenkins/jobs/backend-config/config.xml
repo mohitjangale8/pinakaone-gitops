@@ -1,0 +1,92 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@1590.v49101d088542">
+  <actions/>
+  <description>Edit charts/backend/values.yaml - CONFIG_DATA below is pre-filled with the current file. DRY_RUN (checked by default) shows a diff only; uncheck it and re-run to actually push.</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>APPLICATION</name>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>backend</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <org.biouno.unochoice.DynamicReferenceParameter plugin="uno-choice@2.8.9">
+          <name>CONFIG_DATA</name>
+          <description>Edit below, then Build.</description>
+          <randomName>choice-parameter-13657270819390</randomName>
+          <visibleItemCount>1</visibleItemCount>
+          <script class="org.biouno.unochoice.model.GroovyScript">
+            <secureScript plugin="script-security@1412.v7737b_3405f86">
+              <script>import com.cloudbees.plugins.credentials.CredentialsProvider
+import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials
+import jenkins.model.Jenkins
+
+if (APPLICATION == null || APPLICATION.toString().trim() == &apos;&apos;) {
+    return &quot;&lt;textarea name=&apos;value&apos; rows=&apos;5&apos;&gt;Select an application above first.&lt;/textarea&gt;&quot;
+}
+
+def creds = CredentialsProvider.lookupCredentials(
+    StandardUsernamePasswordCredentials.class, Jenkins.instance, null, null
+).find { it.id == &apos;github-credentials&apos; }
+
+def url = &quot;https://raw.githubusercontent.com/mohitjangale8/pinakaone-gitops/main/charts/${APPLICATION}/values.yaml&quot;
+def conn = new URL(url).openConnection()
+if (creds != null) {
+    conn.setRequestProperty(&quot;Authorization&quot;, &quot;token &quot; + creds.password.plainText)
+}
+def fullYaml = conn.getInputStream().getText()
+
+def tmp = File.createTempFile(&apos;values&apos;, &apos;.yaml&apos;)
+tmp.text = fullYaml
+def proc = [&apos;/usr/local/bin/yq&apos;, &apos;e&apos;, &apos;.config&apos;, tmp.absolutePath].execute()
+proc.waitFor()
+def content = proc.exitValue() == 0 ? proc.text : &quot;# error extracting config (exit ${proc.exitValue()})&quot;
+tmp.delete()
+
+def esc = content.replace(&apos;&amp;&apos;,&apos;&amp;amp;&apos;).replace(&apos;&lt;&apos;,&apos;&amp;lt;&apos;).replace(&apos;&gt;&apos;,&apos;&amp;gt;&apos;)
+return &quot;&lt;textarea name=&apos;value&apos; rows=&apos;20&apos; style=&apos;width:100%;font-family:monospace;font-size:13px;&apos;&gt;${esc}&lt;/textarea&gt;&quot;</script>
+              <sandbox>false</sandbox>
+            </secureScript>
+            <secureFallbackScript plugin="script-security@1412.v7737b_3405f86">
+              <script></script>
+              <sandbox>false</sandbox>
+            </secureFallbackScript>
+          </script>
+          <projectName>backend-config</projectName>
+          <projectFullName>backend-config</projectFullName>
+          <parameters class="linked-hash-map"/>
+          <referencedParameters>APPLICATION</referencedParameters>
+          <choiceType>ET_FORMATTED_HTML</choiceType>
+          <omitValueField>false</omitValueField>
+        </org.biouno.unochoice.DynamicReferenceParameter>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@4370.v49a_6937566b_6">
+    <scm class="hudson.plugins.git.GitSCM" plugin="git@5.10.1">
+      <configVersion>2</configVersion>
+      <userRemoteConfigs>
+        <hudson.plugins.git.UserRemoteConfig>
+          <url>https://github.com/mohitjangale8/pinakaone-gitops.git</url>
+          <credentialsId>github-credentials</credentialsId>
+        </hudson.plugins.git.UserRemoteConfig>
+      </userRemoteConfigs>
+      <branches>
+        <hudson.plugins.git.BranchSpec>
+          <name>*/main</name>
+        </hudson.plugins.git.BranchSpec>
+      </branches>
+      <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+      <submoduleCfg class="empty-list"/>
+      <extensions/>
+    </scm>
+    <scriptPath>jenkins/pipelines/backend-config.Jenkinsfile</scriptPath>
+    <lightweight>true</lightweight>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>
