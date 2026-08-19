@@ -1,7 +1,7 @@
 project: quickmart
 image:
   repository: 931238251190.dkr.ecr.ap-south-1.amazonaws.com/quickmart-backend
-  tag: v11
+  tag: v12
 # HPA (templates/hpa.yaml) owns replica count once deployed - this is only
 # the starting point / HPA's minReplicas.
 replicas: 1
