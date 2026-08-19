@@ -30,16 +30,24 @@ spec:
     spec:
       initContainers:
         - name: wait-for-mysql
-          image: busybox:1.36
+          # mysqladmin ping (protocol-level), not a bare TCP check: the
+          # port can accept connections before mysqld can actually
+          # authenticate, so a plain "is the port open" check lets the app
+          # start seconds too early and fail with "Communications link
+          # failure" even though mysql is visibly "reachable" by then.
+          image: mysql:8.0
+          envFrom:
+            - secretRef:
+                name: {{ .Values.project }}-backend-secrets
           command:
             - sh
             - -c
             - |
-              until nc -z -w2 {{ .Values.mysql.host }} {{ .Values.mysql.port }}; do
-                echo "waiting for {{ .Values.mysql.host }}:{{ .Values.mysql.port }}..."
+              until mysqladmin ping -h {{ .Values.mysql.host }} -P {{ .Values.mysql.port }} -u "$SPRING_DATASOURCE_USERNAME" -p"$SPRING_DATASOURCE_PASSWORD" --silent; do
+                echo "waiting for mysql to accept connections..."
                 sleep 2
               done
-              echo "mysql is reachable"
+              echo "mysql is ready"
       containers:
         - name: backend
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
