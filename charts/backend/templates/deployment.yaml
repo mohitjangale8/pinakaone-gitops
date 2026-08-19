@@ -58,12 +58,18 @@ spec:
               echo "mysql is ready"
       containers:
         - name: backend
+          # Image tag is bumped by the Jenkins pipeline (buildAndPushBackend.groovy)
+          # on each build - this is the field ArgoCD watches to trigger a deploy.
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           ports:
+            # Must match .Values.containerPort used by the readiness/liveness/
+            # startup probes below and by the Service's targetPort.
             - containerPort: {{ .Values.containerPort }}
           envFrom:
+            # App config (non-secret): DB URL, feature flags, etc.
             - configMapRef:
                 name: {{ .Values.project }}-backend-config
+            # Sensitive values: DB credentials, API keys, etc.
             - secretRef:
                 name: {{ .Values.project }}-backend-secrets
           # Three distinct probes (kubernetes.io/docs/reference under the
