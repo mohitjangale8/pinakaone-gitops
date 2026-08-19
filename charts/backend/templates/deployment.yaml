@@ -28,8 +28,6 @@ spec:
       labels:
         app: {{ .Values.project }}-backend
     spec:
-      imagePullSecrets:
-        - name: {{ .Values.ecr.imagePullSecretName }}
       initContainers:
         - name: wait-for-mysql
           image: busybox:1.36

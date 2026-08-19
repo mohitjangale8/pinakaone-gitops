@@ -4,17 +4,6 @@ image:
   repository: 931238251190.dkr.ecr.ap-south-1.amazonaws.com/quickmart-backend
   tag: v10
 
-# ECR auth tokens expire every 12h - imagePullSecretName is refreshed
-# automatically by the CronJob in templates/cronjob-ecr-refresh.yaml, using
-# the node's instance role (no static credentials anywhere). The Secret
-# itself isn't a Helm-templated resource (the CronJob owns its contents), so
-# ArgoCD doesn't track or prune it - only this reference to its name is.
-ecr:
-  imagePullSecretName: quickmart-ecr-pull
-  registry: 931238251190.dkr.ecr.ap-south-1.amazonaws.com
-  region: ap-south-1
-  refreshSchedule: "0 */6 * * *"
-
 # HPA (templates/hpa.yaml) owns replica count once deployed - this is only
 # the starting point / HPA's minReplicas.
 replicas: 1
