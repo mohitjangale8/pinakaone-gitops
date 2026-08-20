@@ -1,31 +1,33 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ .Values.project }}-sonarqube-postgres
+  name: sonarqube-postgres
   namespace: {{ .Release.Namespace }}
 spec:
-  serviceName: {{ .Values.project }}-sonarqube-postgres
+  serviceName: sonarqube-postgres
   replicas: 1
   selector:
     matchLabels:
-      app: {{ .Values.project }}-sonarqube-postgres
+      app: sonarqube-postgres
   template:
     metadata:
       labels:
-        app: {{ .Values.project }}-sonarqube-postgres
+        app: sonarqube-postgres
     spec:
       containers:
         - name: postgres
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           envFrom:
             - secretRef:
-                name: {{ .Values.project }}-sonarqube-postgres
+                name: sonarqube-postgres
           env:
             # local-path PVCs mount with a lost+found dir already present,
             # which trips initdb's "directory not empty" check unless the
             # data dir is a subdirectory of the mount.
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
+            - name: TZ
+              value: Asia/Kolkata
           ports:
             - containerPort: 5432
           volumeMounts:

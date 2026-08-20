@@ -1,25 +1,25 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ .Values.project }}-mysql
+  name: mysql
   namespace: {{ .Release.Namespace }}
 spec:
-  serviceName: {{ .Values.project }}-mysql
+  serviceName: mysql
   replicas: 1
   selector:
     matchLabels:
-      app: {{ .Values.project }}-mysql
+      app: mysql
   template:
     metadata:
       labels:
-        app: {{ .Values.project }}-mysql
+        app: mysql
     spec:
       containers:
         - name: mysql
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           envFrom:
             - secretRef:
-                name: {{ .Values.project }}-mysql-secrets
+                name: mysql-secrets
           env:
             - name: TZ
               value: Asia/Kolkata
@@ -45,7 +45,7 @@ spec:
       volumes:
         - name: init-scripts
           configMap:
-            name: {{ .Values.project }}-mysql-init
+            name: mysql-init
   volumeClaimTemplates:
     - metadata:
         name: data

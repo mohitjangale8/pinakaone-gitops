@@ -1,5 +1,3 @@
-project: quickmart
-
 image:
   repository: postgres
   tag: "16-alpine"

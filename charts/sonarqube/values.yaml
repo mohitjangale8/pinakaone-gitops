@@ -28,7 +28,7 @@ sonarqube:
   # Community Edition doesn't support embedded H2 past a quick demo - its
   # own schema-migration scripts hit an H2 syntax incompatibility and
   # crash on first boot. Points at the sonarqube-postgres chart instead.
-  jdbcUrl: "jdbc:postgresql://quickmart-sonarqube-postgres:5432/sonarqube"
+  jdbcUrl: "jdbc:postgresql://sonarqube-postgres:5432/sonarqube"
   jdbcUsername: "sonarqube"
   jdbcPassword: "sonarqube"
   # Run as non-root user (uid 1000 in the official image)
@@ -37,6 +37,8 @@ sonarqube:
 
 # Environment variables for the container
 env:
+  - name: TZ
+    value: "Asia/Kolkata"
   - name: SONAR_ES_BOOTSTRAP_CHECKS_DISABLE
     value: "true"
   - name: SONAR_WEB_JAVAOPTS
