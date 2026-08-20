@@ -34,7 +34,7 @@ def call(Map config = [:]) {
             if [ -n "\$SONAR_TOKEN" ]; then
                 export SONAR_TOKEN
                 set -x
-                mvn -B -DskipTests sonar:sonar
+                mvn -B -DskipTests compile sonar:sonar
             else
                 echo "WARNING: SonarQube token not found in Secrets Manager (quickmart/sonarqube-token) - skipping analysis"
             fi
