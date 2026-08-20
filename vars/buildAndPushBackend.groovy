@@ -28,17 +28,19 @@ def call(Map config = [:]) {
         // Jenkins container, see pinakaone-iac user_data.sh.tpl). Token
         // fetched from Secrets Manager at runtime (not stored in Jenkins).
         // Uses the sonar.* properties declared in the app's pom.xml.
-        sh """
-            set +x
-            SONAR_TOKEN=\$(aws secretsmanager get-secret-value --region ${region} --secret-id quickmart/sonarqube-token --query SecretString --output text 2>/dev/null || echo '')
-            if [ -n "\$SONAR_TOKEN" ]; then
-                export SONAR_TOKEN
-                set -x
-                mvn -B -DskipTests compile sonar:sonar
-            else
-                echo "WARNING: SonarQube token not found in Secrets Manager (quickmart/sonarqube-token) - skipping analysis"
-            fi
-        """
+        def sonarToken = sh(
+            script: "aws secretsmanager get-secret-value --region ${region} --secret-id quickmart/sonarqube-token --query SecretString --output text 2>/dev/null || true",
+            returnStdout: true
+        ).trim()
+        if (sonarToken) {
+            withEnv(["SONAR_TOKEN=${sonarToken}"]) {
+                sh 'mvn -B -DskipTests compile sonar:sonar'
+            }
+            def sonarUrl = 'https://sonarqube.pinakaone.in/dashboard?id=quickmart-backend'
+            currentBuild.description += "<br/><a href=\"${sonarUrl}\" target=\"_blank\">SonarQube report</a>"
+        } else {
+            echo "WARNING: SonarQube token not found in Secrets Manager (quickmart/sonarqube-token) - skipping analysis"
+        }
 
         sh """
             aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${registry}
