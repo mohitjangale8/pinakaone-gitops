@@ -1,0 +1,51 @@
+image:
+  repository: sonarqube
+  tag: lts-community
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+service:
+  type: NodePort
+  port: 9000
+  nodePort: 30900
+
+persistence:
+  enabled: true
+  storageClass: local-path
+  accessMode: ReadWriteOnce
+  size: 10Gi
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 800m
+    memory: 1536Mi
+
+sonarqube:
+  # Community Edition doesn't support embedded H2 past a quick demo - its
+  # own schema-migration scripts hit an H2 syntax incompatibility and
+  # crash on first boot. Points at the sonarqube-postgres chart instead.
+  jdbcUrl: "jdbc:postgresql://quickmart-sonarqube-postgres:5432/sonarqube"
+  jdbcUsername: "sonarqube"
+  jdbcPassword: "sonarqube"
+  # Run as non-root user (uid 1000 in the official image)
+  runAsUser: 1000
+  fsGroup: 1000
+
+# Environment variables for the container
+env:
+  - name: SONAR_ES_BOOTSTRAP_CHECKS_DISABLE
+    value: "true"
+  - name: SONAR_WEB_JAVAOPTS
+    value: "-Xms256m -Xmx384m -Djava.security.egd=file:/dev/./urandom"
+  - name: SONAR_CE_JAVAOPTS
+    value: "-Xms256m -Xmx384m"
+  - name: SONAR_SEARCH_JAVAOPTS
+    value: "-Xms256m -Xmx384m"
+
+# Ingress not used - Caddy on host handles TLS
+ingress:
+  enabled: false

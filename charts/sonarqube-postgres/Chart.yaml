@@ -1,0 +1,6 @@
+apiVersion: v2
+name: sonarqube-postgres
+description: PostgreSQL for SonarQube - Community Edition doesn't support embedded H2 past a demo (its own schema migrations hit an H2 syntax incompatibility)
+type: application
+version: 0.1.0
+appVersion: "16-alpine"

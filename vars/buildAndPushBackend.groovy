@@ -24,6 +24,22 @@ def call(Map config = [:]) {
         currentBuild.displayName = "#${env.BUILD_NUMBER} quickmart-backend -> ${branch}"
         currentBuild.description = "quickmart-backend @ ${shortSha} ${author}\n${message}"
 
+        // SonarQube analysis - native mvn (Maven+JDK21 installed in the
+        // Jenkins container, see pinakaone-iac user_data.sh.tpl). Token
+        // fetched from Secrets Manager at runtime (not stored in Jenkins).
+        // Uses the sonar.* properties declared in the app's pom.xml.
+        sh """
+            set +x
+            SONAR_TOKEN=\$(aws secretsmanager get-secret-value --region ${region} --secret-id quickmart/sonarqube-token --query SecretString --output text 2>/dev/null || echo '')
+            if [ -n "\$SONAR_TOKEN" ]; then
+                export SONAR_TOKEN
+                set -x
+                mvn -B -DskipTests sonar:sonar
+            else
+                echo "WARNING: SonarQube token not found in Secrets Manager (quickmart/sonarqube-token) - skipping analysis"
+            fi
+        """
+
         sh """
             aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${registry}
             docker build -t ${registry}/${image}:${imageTag} .

@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.project }}-sonarqube-postgres
+  namespace: {{ .Release.Namespace }}
+spec:
+  serviceName: {{ .Values.project }}-sonarqube-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.project }}-sonarqube-postgres
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.project }}-sonarqube-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          envFrom:
+            - secretRef:
+                name: {{ .Values.project }}-sonarqube-postgres
+          env:
+            # local-path PVCs mount with a lost+found dir already present,
+            # which trips initdb's "directory not empty" check unless the
+            # data dir is a subdirectory of the mount.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "{{ .Values.db.user }}"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "{{ .Values.db.user }}"]
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: {{ .Values.storage.storageClassName }}
+        resources:
+          requests:
+            storage: {{ .Values.storage.size }}

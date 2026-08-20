@@ -47,6 +47,22 @@ def call(Map config = [:]) {
             npm run build
             aws s3 sync dist/quickmart-frontend/browser s3://${bucket} --delete --region ${region}
         """
+
+        // SonarQube analysis - native sonar-scanner (installed in the
+        // Jenkins container, see pinakaone-iac user_data.sh.tpl). Config
+        // in the app repo's sonar-project.properties. Token fetched from
+        // Secrets Manager at runtime (not stored in Jenkins).
+        sh """
+            set +x
+            SONAR_TOKEN=\$(aws secretsmanager get-secret-value --region ${region} --secret-id quickmart/sonarqube-token --query SecretString --output text 2>/dev/null || echo '')
+            if [ -n "\$SONAR_TOKEN" ]; then
+                export SONAR_TOKEN
+                set -x
+                sonar-scanner -Dsonar.host.url=https://sonarqube.pinakaone.in
+            else
+                echo "WARNING: SonarQube token not found in Secrets Manager (quickmart/sonarqube-token) - skipping analysis"
+            fi
+        """
     }
 
     // Cross-account credentials (CloudFront is in the paid account, this
