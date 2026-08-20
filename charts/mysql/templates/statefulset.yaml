@@ -20,6 +20,9 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ .Values.project }}-mysql-secrets
+          env:
+            - name: TZ
+              value: Asia/Kolkata
           ports:
             - containerPort: 3306
           volumeMounts:
