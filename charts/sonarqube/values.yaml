@@ -46,7 +46,7 @@ env:
   - name: SONAR_CE_JAVAOPTS
     value: "-Xms256m -Xmx384m"
   - name: SONAR_SEARCH_JAVAOPTS
-    value: "-Xms256m -Xmx384m"
+    value: "-Xms128m -Xmx256m"
 
 # Ingress not used - Caddy on host handles TLS
 ingress:
