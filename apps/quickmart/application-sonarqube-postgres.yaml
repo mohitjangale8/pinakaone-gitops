@@ -1,17 +1,20 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: mysql
+  name: sonarqube-postgres
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/mohitjangale8/pinakaone-gitops.git
     targetRevision: main
-    path: charts/mysql
+    path: charts/sonarqube-postgres
+    helm:
+      valueFiles:
+        - values.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: quickmart
+    namespace: sonarqube
   syncPolicy:
     automated:
       prune: true

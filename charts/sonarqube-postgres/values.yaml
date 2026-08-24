@@ -1,0 +1,23 @@
+image:
+  repository: postgres
+  tag: "16-alpine"
+
+db:
+  name: sonarqube
+  user: sonarqube
+  # Internal-only credential: ClusterIP service, no NodePort, not reachable
+  # outside the cluster - plain Secret (not Secrets Manager/external-secrets)
+  # is fine here, unlike the customer-facing MySQL credential.
+  password: "sonarqube"
+
+storage:
+  size: 2Gi
+  storageClassName: local-path
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 300m
+    memory: 512Mi

@@ -7,11 +7,6 @@ metadata:
   namespace: {{ .Release.Namespace }}
 data:
   SPRING_DATASOURCE_URL: "jdbc:mysql://{{ .Values.mysql.host }}:{{ .Values.mysql.port }}/{{ .Values.mysql.database }}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
-  APP_CORS_ALLOWED_ORIGINS: {{ .Values.config.corsAllowedOrigins | quote }}
-  APP_JWT_EXPIRATION_MS: {{ .Values.config.jwtExpirationMs | quote }}
-  APP_PAYMENT_MOCK: {{ .Values.config.paymentMock | quote }}
-  APP_S3_BUCKET: {{ .Values.config.s3Bucket | quote }}
-  APP_S3_REGION: {{ .Values.config.s3Region | quote }}
-  APP_S3_PUBLIC_BASE: {{ .Values.config.s3PublicBase | quote }}
-  APP_TRACKING_ENABLED: {{ .Values.config.trackingEnabled | quote }}
-  APP_TRACKING_CRON: {{ .Values.config.trackingCron | quote }}
+  {{- range $key, $value := .Values.config }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}

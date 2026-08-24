@@ -1,45 +1,43 @@
 project: quickmart
-
 image:
   repository: 931238251190.dkr.ecr.ap-south-1.amazonaws.com/quickmart-backend
-  tag: v4
-
-# ECR auth tokens expire every 12h - imagePullSecretName is refreshed
-# automatically by the CronJob in templates/cronjob-ecr-refresh.yaml, using
-# the node's instance role (no static credentials anywhere). The Secret
-# itself isn't a Helm-templated resource (the CronJob owns its contents), so
-# ArgoCD doesn't track or prune it - only this reference to its name is.
-ecr:
-  imagePullSecretName: quickmart-ecr-pull
-  registry: 931238251190.dkr.ecr.ap-south-1.amazonaws.com
-  region: ap-south-1
-  refreshSchedule: "0 */6 * * *"
-
+  tag: v24
+# HPA (templates/hpa.yaml) owns replica count once deployed - this is only
+# the starting point / HPA's minReplicas.
 replicas: 1
-
 containerPort: 8204
-
+service:
+  # Fixed NodePort, same pattern as the mysql/argocd charts - Caddy's
+  # reverse_proxy target (pinakaone-iac's Caddyfile) points here, not at
+  # containerPort directly.
+  nodePort: 30204
+hpa:
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
 mysql:
-  # Must match the mysql chart's release naming (<project>-mysql), and both
-  # charts must be deployed into the same namespace for this DNS name to resolve.
-  host: quickmart-mysql
+  # Must match the mysql chart's Service name, and both charts must be
+  # deployed into the same namespace for this DNS name to resolve.
+  host: mysql
   port: 3306
   # Must match modules/secrets' db_name in pinakaone-iac (default: pinakaone_quickmart)
   database: pinakaone_quickmart
-
 config:
-  corsAllowedOrigins: "http://localhost:4200,http://localhost:3000,https://quickmart.pinakaone.in"
-  jwtExpirationMs: "86400000"
-  paymentMock: "false"
-  s3Bucket: quickmart-image-bucket
-  s3Region: ap-south-1
-  s3PublicBase: https://quickmart-image-bucket.s3.ap-south-1.amazonaws.com
-  trackingEnabled: "true"
-  trackingCron: "0 */1 * * * *"
-
+  TZ: "Asia/Kolkata"
+  SPRING_PROFILES_ACTIVE: "default"
+  APP_CORS_ALLOWED_ORIGINS: "http://localhost:4200,http://localhost:3000,https://quickmart.pinakaone.in"
+  APP_JWT_EXPIRATION_MS: "86400000"
+  APP_PAYMENT_MOCK: "false"
+  APP_SHOW_SQL: "false"
+  APP_S3_BUCKET: quickmart-image-bucket
+  APP_S3_REGION: ap-south-1
+  APP_S3_PUBLIC_BASE: https://quickmart-image-bucket.s3.ap-south-1.amazonaws.com
+  APP_TRACKING_ENABLED: "true"
+  APP_TRACKING_CRON: "0 */1 * * * *"
 resources:
   requests:
     cpu: 250m
     memory: 512Mi
   limits:
+    cpu: 750m
     memory: 1Gi

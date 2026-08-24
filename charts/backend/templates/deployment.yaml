@@ -4,7 +4,22 @@ metadata:
   name: {{ .Values.project }}-backend
   namespace: {{ .Release.Namespace }}
 spec:
+  # replicas intentionally omitted: the HPA (templates/hpa.yaml) owns this
+  # field once it exists - Helm/ArgoCD setting it on every sync would fight
+  # the HPA's own scaling decisions. .Values.replicas is still the HPA's
+  # minReplicas, so this stays in effect until the HPA's first reconcile.
   replicas: {{ .Values.replicas }}
+  # RollingUpdate, maxUnavailable 0 / maxSurge 1: the new pod must pass its
+  # readiness probe (i.e. be fully live) before the old one is removed -
+  # true zero-downtime. Only possible now that the pod no longer binds
+  # hostPort (see service.yaml) - two pods on one node can't otherwise both
+  # bind the same host port at once, which is what forced Recreate (and its
+  # brief downtime window) before this revamp.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: {{ .Values.project }}-backend
@@ -12,42 +27,85 @@ spec:
     metadata:
       labels:
         app: {{ .Values.project }}-backend
+      annotations:
+        # Nothing else ties the ConfigMap's actual content into the pod
+        # template - envFrom only references it by name, so Kubernetes has
+        # no signal to roll pods when it changes. This hash changes
+        # whenever the ConfigMap's rendered content does, which changes
+        # the pod template, which is what actually triggers the rolling
+        # restart (maxUnavailable=0 above still applies, so zero-downtime).
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
-      imagePullSecrets:
-        - name: {{ .Values.ecr.imagePullSecretName }}
       initContainers:
         - name: wait-for-mysql
-          image: busybox:1.36
+          # mysqladmin ping (protocol-level), not a bare TCP check: the
+          # port can accept connections before mysqld can actually
+          # authenticate, so a plain "is the port open" check lets the app
+          # start seconds too early and fail with "Communications link
+          # failure" even though mysql is visibly "reachable" by then.
+          image: mysql:8.0
+          envFrom:
+            - secretRef:
+                name: {{ .Values.project }}-backend-secrets
           command:
             - sh
             - -c
             - |
-              until nc -z -w2 {{ .Values.mysql.host }} {{ .Values.mysql.port }}; do
-                echo "waiting for {{ .Values.mysql.host }}:{{ .Values.mysql.port }}..."
+              until mysqladmin ping -h {{ .Values.mysql.host }} -P {{ .Values.mysql.port }} -u "$SPRING_DATASOURCE_USERNAME" -p"$SPRING_DATASOURCE_PASSWORD" --silent; do
+                echo "waiting for mysql to accept connections..."
                 sleep 2
               done
-              echo "mysql is reachable"
+              echo "mysql is ready"
       containers:
         - name: backend
+          # Image tag is bumped by the Jenkins pipeline (buildAndPushBackend.groovy)
+          # on each build - this is the field ArgoCD watches to trigger a deploy.
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           ports:
+            # Must match .Values.containerPort used by the readiness/liveness/
+            # startup probes below and by the Service's targetPort.
             - containerPort: {{ .Values.containerPort }}
           envFrom:
+            # App config (non-secret): DB URL, feature flags, etc.
             - configMapRef:
                 name: {{ .Values.project }}-backend-config
+            # Sensitive values: DB credentials, API keys, etc.
             - secretRef:
                 name: {{ .Values.project }}-backend-secrets
+          # Three distinct probes (kubernetes.io/docs/reference under the
+          # Probe v1 core API type), each answering a different question:
+          #   startup   - has the JVM finished booting yet at all? Gates the
+          #               other two probes off until this succeeds, so a
+          #               slow cold start (Flyway migrations, JIT warmup)
+          #               can't be mistaken for a liveness failure and
+          #               killed mid-boot.
+          #   readiness - can this pod take traffic RIGHT NOW? Controls
+          #               Service endpoint membership and, combined with
+          #               maxUnavailable=0 above, gates the rollout itself -
+          #               the old pod isn't removed until this succeeds on
+          #               the new one.
+          #   liveness  - has this pod wedged into an unrecoverable state
+          #               and needs a restart? Deliberately more tolerant
+          #               (longer period, higher failureThreshold) than
+          #               readiness - a pod that's briefly unready (e.g.
+          #               mid-GC pause) shouldn't be killed for it.
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: {{ .Values.containerPort }}
+            periodSeconds: 5
+            failureThreshold: 30 # 5s * 30 = 150s allowed to boot
           readinessProbe:
             httpGet:
               path: /actuator/health
               port: {{ .Values.containerPort }}
-            initialDelaySeconds: 30
-            periodSeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
           livenessProbe:
             httpGet:
               path: /actuator/health
               port: {{ .Values.containerPort }}
-            initialDelaySeconds: 45
-            periodSeconds: 20
+            periodSeconds: 10
+            failureThreshold: 6
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

@@ -1,0 +1,15 @@
+# maxUnavailable, not minAvailable: with the HPA free to run this at just
+# 1 replica, minAvailable: 1 would deadlock any voluntary eviction of that
+# sole pod (it can never satisfy "at least 1 must remain" while evicting
+# the only one) - maxUnavailable: 1 still caps disruption to one pod at a
+# time once the HPA scales past 1, without that deadlock risk at 1.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Values.project }}-backend
+  namespace: {{ .Release.Namespace }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.project }}-backend

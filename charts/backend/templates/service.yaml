@@ -1,15 +1,21 @@
-# ClusterIP only for now - not publicly reachable until CloudFront/ALB is
-# wired up in a later phase. Reachable for manual testing via kubectl
-# port-forward + SSM, same pattern as everything else.
+# Fixed NodePort, not hostPort on the pod itself: hostPort ties the pod to
+# a single node's actual OS-level port, so two pods (old + new, mid
+# rollout) can never coexist - that's what forced the Recreate strategy's
+# brief downtime window before this. A NodePort is kube-proxy-routed
+# Service networking instead - old and new pod can both be Ready
+# simultaneously, which is what makes the zero-downtime RollingUpdate in
+# deployment.yaml actually possible. Caddy's reverse_proxy target
+# (pinakaone-iac's Caddyfile) points at this nodePort, not containerPort.
 apiVersion: v1
 kind: Service
 metadata:
   name: {{ .Values.project }}-backend
   namespace: {{ .Release.Namespace }}
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     app: {{ .Values.project }}-backend
   ports:
     - port: {{ .Values.containerPort }}
       targetPort: {{ .Values.containerPort }}
+      nodePort: {{ .Values.service.nodePort }}
