@@ -6,6 +6,13 @@ metadata:
     {{- include "sonarqube.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  # RollingUpdate (the default) starts the new pod before killing the old
+  # one - both mount the same RWO PVC and Elasticsearch locks its data
+  # directory to a single process, so the new pod's ES can never start
+  # while the old one still holds that lock (CrashLoopBackOff:
+  # "failed to obtain node locks"). Recreate kills the old pod first.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       {{- include "sonarqube.selectorLabels" . | nindent 6 }}
