@@ -15,6 +15,13 @@ persistence:
   storageClass: local-path
   accessMode: ReadWriteOnce
   size: 10Gi
+  # Static binding to the PV already carrying this chart's real data,
+  # recreated 2026-08-22 with corrected nodeAffinity (see that PV's own
+  # description for the full story). Without this, ArgoCD keeps trying to
+  # reconcile the live PVC (which has this set) back to no volumeName,
+  # which Kubernetes rejects as an immutable-field change - a permanent
+  # SyncError otherwise.
+  volumeName: pvc-d709c24c-9f6f-49d8-8a7f-cc06dab4e30e
 
 resources:
   requests:
