@@ -33,6 +33,8 @@ def call(Map config = [:]) {
         }
     }
 
+    scanForSecrets('backend-src')
+
     stage('SonarQube analysis') {
         dir('backend-src') {
             // Native mvn (Maven+JDK21 installed in the Jenkins container,

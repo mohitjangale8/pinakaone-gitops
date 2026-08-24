@@ -29,6 +29,8 @@ def call(Map config = [:]) {
         }
     }
 
+    scanForSecrets('frontend-src')
+
     stage('Build & deploy to S3') {
         dir('frontend-src') {
             // node_modules cache outside the workspace, keyed by a hash of
