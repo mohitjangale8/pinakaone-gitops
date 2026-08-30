@@ -9,10 +9,28 @@ image:
 
 storage:
   size: 8Gi
-  # K3s's built-in "local-path" storage class. Ties data to this specific
-  # node's local disk - fine for now, but means data does NOT survive the
-  # instance itself being replaced (spot reclaim). Revisit once the ASG
-  # lifecycle-hook + persistent EBS design (BRD section 10.5) is built.
+  # K3s's built-in "local-path" storage class, which normally ties a PVC to
+  # whichever node's local disk it was first bound on.
+  #
+  # Corrected 2026-08-30: an earlier version of this comment claimed data
+  # does NOT survive the instance being replaced, and deferred to an "ASG
+  # lifecycle-hook + persistent EBS design (BRD section 10.5)". Both halves
+  # were wrong. That lifecycle-hook design was never built - there is no
+  # lifecycle hook and no snapshot automation anywhere in pinakaone-iac -
+  # and the data survives replacement anyway, by a different mechanism:
+  # pinakaone-iac's user_data.sh.tpl patches the local-path-config configmap
+  # on every boot to point the provisioner's root at
+  # /mnt/pinaka-data/local-path-provisioner, which lives on the persistent
+  # EBS volume that is re-attached to each new instance. Nightly
+  # scale-to-zero and real spot reclamations have both been ridden out with
+  # data intact.
+  #
+  # Two sharp edges that ARE real, so don't let the above read as
+  # reassurance: local-path PVs carry a nodeAffinity pinned to a node name,
+  # which went stale after one replacement and left pods Pending for ~15
+  # hours until the PVs were recreated; and there is still no independent
+  # copy of this data - no snapshot schedule, no DLM policy, no mysqldump.
+  # One corrupted or deleted volume is total loss.
   storageClassName: local-path
 
 resources:
